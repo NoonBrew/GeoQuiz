@@ -3,32 +3,39 @@ package com.bignerdranch.android.geoquiz
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+
+private const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var trueButton: Button
     private lateinit var falseButton: Button
-    private lateinit var nextButton: Button
+    private lateinit var nextButton: ImageButton
     private lateinit var questionTextView: TextView
-    private lateinit var prevButton: Button
+    private lateinit var prevButton: ImageButton
     // Creates a list of objects created with our Question class Model
     // We pass the Question class a resource location and the answer.
     private val questionBank = listOf(
-        Question(R.string.question_australia, true),
-        Question(R.string.question_oceans, true),
-        Question(R.string.question_mideast, false),
-        Question(R.string.question_africa, false),
-        Question(R.string.question_americas, true),
-        Question(R.string.question_asia, true))
+        Question(R.string.question_australia, true, false),
+        Question(R.string.question_oceans, true, false),
+        Question(R.string.question_mideast, false, false),
+        Question(R.string.question_africa, false, false),
+        Question(R.string.question_americas, true, false),
+        Question(R.string.question_asia, true, false))
     // Creates an index we will use to iterate over the list.
     private var currentIndex = 0
+    private var questionsRight = 0
+    private var questionsAnswered = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate(Bundle?) called")
         setContentView(R.layout.activity_main)
 
         trueButton = findViewById(R.id.true_button)
@@ -60,20 +67,40 @@ class MainActivity : AppCompatActivity() {
         prevButton.setOnClickListener {
             // Previous button checks the current Index, if we are not at index 0
             // we minus 1 from the index and update the question.
-            if (currentIndex > 0) {
-                currentIndex -= 1
-                updateQuestion()
-            } else {
-                //Other wise if the index is at 0 we get the index of the last element in our list
+            currentIndex -= 1
+            if (currentIndex == -1) {
                 currentIndex = questionBank.indexOf(questionBank.last())
-                // We do this so we never go out of bounds of the range of our list.
-                updateQuestion()
             }
-
-
+            updateQuestion()
         }
 
         updateQuestion()
+        buttonToggle()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d(TAG, "onStart() called")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d(TAG, "onResume() called")
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d(TAG, "onPause() called")
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d(TAG, "onStop() called")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "onDestroy() called")
     }
 
     private fun nextQuestion() {
@@ -81,6 +108,7 @@ class MainActivity : AppCompatActivity() {
         // This allows us to loop back over our list by setting the index back to 0
         // when it equals the size of the list.
         currentIndex = (currentIndex + 1) % questionBank.size
+
     }
 
     // Function that gets the string resource value stored at the current index of the list
@@ -88,18 +116,47 @@ class MainActivity : AppCompatActivity() {
         val questionTextResId = questionBank[currentIndex].textResID
         // Sets the text view with the string at that resource location.
         questionTextView.setText(questionTextResId)
+        buttonToggle()
     }
+
     // Takes a boolean and compares that with the boolean stored in our Class Model.
     private fun checkAnswer(userAnswer: Boolean) {
         // Gets the boolean at the current index stored in our list.
         val correctAnswer = questionBank[currentIndex].answer
         // Compares the user selected answer to the one stored in our list.
-        val messageResId = if (userAnswer == correctAnswer) {
-            R.string.correct_toast
+        val messageResId: Int
+        if (userAnswer == correctAnswer) {
+            messageResId = R.string.correct_toast
+            questionsRight++
         } else {
-            R.string.incorrect_toast
+            messageResId = R.string.incorrect_toast
         }
-
+        questionsAnswered++
+        answered()
+        buttonToggle()
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+        quizScore()
     }
+
+    private fun answered() {
+        questionBank[currentIndex].isAnswered = true
+    }
+
+    private fun buttonToggle() {
+        if(questionBank[currentIndex].isAnswered){
+            trueButton.isEnabled = false
+            falseButton.isEnabled = false
+        } else {
+            trueButton.isEnabled = true
+            falseButton.isEnabled = true
+        }
+    }
+
+    private fun quizScore(){
+        if (questionsAnswered == (questionBank.size)) {
+            val totalScore = ((questionsRight * 100)/questionsAnswered).toDouble()
+            Toast.makeText(this, "Score $totalScore%", Toast.LENGTH_LONG).show()
+        }
+    }
+
 }
