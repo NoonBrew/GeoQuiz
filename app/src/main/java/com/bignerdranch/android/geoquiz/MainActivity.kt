@@ -17,7 +17,7 @@ import androidx.lifecycle.ViewModelProviders
 
 private const val KEY_INDEX = "index"
 private const val TAG = "MainActivity"
-private const val REQUEST_CODE_CHEAT = 0
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,9 +33,11 @@ class MainActivity : AppCompatActivity() {
     private val quizViewModel: QuizViewModel by lazy {
         ViewModelProvider(this).get(QuizViewModel::class.java)
     }
-
+    // Holds an ActivityForResult function telling the MainActivity it will receive data from the
+    // child activity.
     private val getCheatResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            // Result is a result.Code and we pass that code to our function.
             result -> handleCheatResult(result)
         }
 
@@ -90,6 +92,7 @@ class MainActivity : AppCompatActivity() {
 //            val intent = Intent(this, CheatActivity::class.java)
             val answerIsTrue = quizViewModel.currentQuestionAnswer
             val intent = CheatActivity.newIntent(this@MainActivity, answerIsTrue)
+            // calls the launch method on our getActivityForResult.
             getCheatResult.launch(intent)
             updateQuestion()
         }
@@ -161,6 +164,9 @@ class MainActivity : AppCompatActivity() {
         when {
             quizViewModel.isCheater ->{
                 messageResId = R.string.judgement_toast
+                // Resets the isCheater method of the viewModel back to false so they are not
+                // shamed on the next question even if they don't cheat.
+                quizViewModel.isCheater = false
             }
             userAnswer == correctAnswer ->{
                 messageResId = R.string.correct_toast
@@ -211,7 +217,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Score $totalScore%", Toast.LENGTH_LONG).show()
         }
     }
-
+    // Handles the result sent back from the child activity and adjusts the quizViewModel according
     private fun handleCheatResult(result: ActivityResult) {
         if(result.resultCode == RESULT_OK) {
             quizViewModel.isCheater =
