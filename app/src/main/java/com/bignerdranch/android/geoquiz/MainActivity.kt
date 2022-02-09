@@ -1,6 +1,7 @@
 package com.bignerdranch.android.geoquiz
 
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -9,11 +10,14 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 
 private const val KEY_INDEX = "index"
 private const val TAG = "MainActivity"
+private const val REQUEST_CODE_CHEAT = 0
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,12 +26,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextButton: ImageButton
     private lateinit var questionTextView: TextView
     private lateinit var prevButton: ImageButton
+    private lateinit var cheatButton: Button
     // Creates a list of objects created with our Question class Model
     // We pass the Question class a resource location and the answer.
 
     private val quizViewModel: QuizViewModel by lazy {
         ViewModelProvider(this).get(QuizViewModel::class.java)
     }
+
+    private val getCheatResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            result -> handleCheatResult(result)
+        }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,11 +84,21 @@ class MainActivity : AppCompatActivity() {
             // Calls our quizScore method to see if it is time to give our user their score.
             quizScore()
         }
+
+        cheatButton.setOnClickListener {
+            // Start CheatActivity
+//            val intent = Intent(this, CheatActivity::class.java)
+            val answerIsTrue = quizViewModel.currentQuestionAnswer
+            val intent = CheatActivity.newIntent(this@MainActivity, answerIsTrue)
+            getCheatResult.launch(intent)
+            updateQuestion()
+        }
         // Updates question, useful for rotation and pausing.
         updateQuestion()
         // Same as update question, useful for rotation and pausing.
         buttonToggle()
     }
+
     // Sets up our resources, I find this makes everything a little cleaner.
     private fun findViewSetup() {
         trueButton = findViewById(R.id.true_button)
@@ -86,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         nextButton = findViewById(R.id.next_button)
         questionTextView = findViewById(R.id.question_text_view)
         prevButton = findViewById(R.id.prev_button)
+        cheatButton = findViewById(R.id.cheat_button)
     }
     // Test logs from the book.
     override fun onStart() {
@@ -137,12 +158,18 @@ class MainActivity : AppCompatActivity() {
         // pulled the initialization out of the if statement so that it could do more.
         val messageResId: Int
         // Compares the user selected answer to the one stored in our list.
-        if (userAnswer == correctAnswer) {
-            messageResId = R.string.correct_toast
-            //Increments our question right variable to keep track of how many correct guesses.
-            quizViewModel.questionsRight++
-        } else {
-            messageResId = R.string.incorrect_toast
+        when {
+            quizViewModel.isCheater ->{
+                messageResId = R.string.judgement_toast
+            }
+            userAnswer == correctAnswer ->{
+                messageResId = R.string.correct_toast
+                //Increments our question right variable to keep track of how many correct guesses.
+                quizViewModel.questionsRight++
+            }
+            else -> {
+                messageResId = R.string.incorrect_toast
+            }
         }
         quizViewModel.questionsAnswered++
         //This calls a method on our ViewModel to set a question to answered.
@@ -182,6 +209,13 @@ class MainActivity : AppCompatActivity() {
                 ((quizViewModel.questionsRight * 100)/quizViewModel.questionsAnswered).toDouble()
             // This toast will tell the user their percent score
             Toast.makeText(this, "Score $totalScore%", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleCheatResult(result: ActivityResult) {
+        if(result.resultCode == RESULT_OK) {
+            quizViewModel.isCheater =
+                result.data?.getBooleanExtra(EXTRA_ANSWER_SHOWN, false) ?: false
         }
     }
 
